@@ -1,7 +1,8 @@
 import pandas as pd
-import seaborn as sns
+# import seaborn as sns
 import numpy as np
 from datetime import timedelta
+import pickle
 
 d = pd.read_csv('dataset_mood_smartphone.csv', index_col=2, parse_dates=[2])
 
@@ -40,13 +41,24 @@ resample_method_dictionary = {
 
 data_per_id = {}
 for id in ids:
-    data_per_id[id] = dp.loc[dp.id == id].drop('id', 1)
-    data_per_id[id] = data_per_id[id].resample('1D').agg(resample_method_dictionary)
-    for index in data_per_id[id][data_per_id[id].mood.notnull() == True].index:
-        first_day = index - timedelta(days=5)
-        last_day = index - timedelta(days=1)
-        column = data_per_id[id][first_day:last_day]
-        column.index = range(1,6)
-        column.pivot(index=column.index,values=column.time_index)
-        break
-    break
+    current_d = dp.loc[dp.id == id].drop('id', 1)
+    current_d = current_d.resample('1D').agg(resample_method_dictionary)
+    data = pd.DataFrame()
+    for i in current_d[current_d.mood.notnull() == True].index:
+        first_day = i - timedelta(days=5)
+        last_day = i - timedelta(days=1)
+        column = current_d[first_day:last_day]
+        if column.index.size == 5:
+            column.index = range(1, 6)
+            a = pd.DataFrame(column.stack()).reset_index()
+            a.index = a.level_0.map(str) + a.level_1
+            a = a.drop(['level_0', 'level_1'], 1).transpose()
+        else:
+            current_d.drop(i)
+        data = data.append(a)
+    data['mood_next_day'] = current_d[current_d.mood.notnull() == True].mood.as_matrix()
+    data_per_id[id] = data
+    data.to_csv('data/data_' + id+'.csv')
+
+with open('data_dict.pickle', 'w') as f:
+    pickle.dump(data_per_id, f)

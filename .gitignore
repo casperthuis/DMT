@@ -63,3 +63,6 @@ spyder_crash.log
 
 # git .orig files
 *.orig
+
+*.pickle
+*.csv
