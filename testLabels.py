@@ -28,6 +28,7 @@ for i in os.listdir('data'):
                 line = line.strip()
                 line = line.split(',')
                 values = line[1:]
-                print i, len(values)
+                if len(values) == 96:
+                    print '--->',i, len(values)
                 break
                     

@@ -12,8 +12,11 @@ inputs = 0 #will be specified later in the code
 hidden = 20
 outputs = 1
 initialize = True
+noPatients = 0
+standardization = 'yes'
 for i in os.listdir('data'):
     if i.endswith(".csv"): 
+        
         stop = False
         with open('data/' + i) as f:
             totals = np.zeros(len(labels))
@@ -22,11 +25,22 @@ for i in os.listdir('data'):
                 line = line.replace('\n','')
                 line = line.strip()
                 line = line.split(',')
+                
+            
                 values = line[1:]
+                
                 #values = line[-20:]
                 if len(line) != 97:
                     stop = True
                     break
+                values = list( values[i] for i in [16,35,54,73,92, -1] )
+                #this is to remove the mood from the inputs.
+#                del values[92]
+#                del values[73]
+#                del values[54]
+#                del values[35]
+#                del values[16]
+
                 if counter == 0:
                     if initialize == True:
                         initialize = False
@@ -45,6 +59,7 @@ for i in os.listdir('data'):
             mean = totals/counter
             if stop == True:
                 continue
+            noPatients += 1
         with open('data/' + i) as f:
             next(f)
             for counter, line in enumerate(f):
@@ -52,14 +67,24 @@ for i in os.listdir('data'):
                 line = line.strip()
                 line = line.split(',')
                 values = line[1:]
+                values = list( values[i] for i in [16,35,54,73,92, -1] )
+                #this is to remove the mood from the inputs.
+#                del values[92]
+#                del values[73]
+#                del values[54]
+#                del values[35]
+#                del values[16]
+
                 #values = line[-20:]
                 for j, value in enumerate(values):
                     if value == '':
                         values[j] = 0.0
                 values = np.array(values, dtype='float32')
-                #ds.addSample(values[0:-1] - mean[0:-1], values[-1] - mean[-1])
-                #ds.addSample(values[0:-1]/ mean[0:-1], values[-1]/ mean[-1])
-                ds.addSample(values[0:-1], values[-1])
+                if standardization == 'yes':
+                    ds.addSample(values[0:-1] - mean[0:-1], values[-1] - mean[-1])
+                else:
+                    ds.addSample(values[0:-1], values[-1])
+    break #comment this in to only use the first patient
 
 #%%
 tstdata, trndata = ds.splitWithProportion( 0.25 )
@@ -75,6 +100,7 @@ goed = 0
 totaal = 0
 MSE = 0.0
 MAE = 0.0
+errorVec = []
 for i, o in enumerate(out):
     sign = np.sign(out[i] * tstdata['target'][i])
     if sign == -1:
@@ -82,7 +108,9 @@ for i, o in enumerate(out):
     else:
         goed += 1
     totaal += 1
-    print out[i], tstdata['target'][i], out[i] - tstdata['target'][i]#, sign
+    error =  out[i] - tstdata['target'][i]
+    errorVec.append(error[0])
+    print out[i], tstdata['target'][i], error #, sign
     MAE = MAE + abs(out[i] - tstdata['target'][i])
     MSE = MSE + (out[i] - tstdata['target'][i])**2
 MSE = MSE / totaal
@@ -93,18 +121,17 @@ print 'totaal', totaal
 print 'MSE', MSE
 print 'MAE', MAE
 
-#for i in xrange(1,200):
-#    print trainer.train() #UntilConvergence()
-
-#net = buildNetwork(inputs, hidden, outputs)
-
-#print net.activate([1, 0])
-#print net.activate([1, 0])
-#print net.activate([2, 4])
-
 #%%
-#import pickle
-#with open('data_dict.pickle', 'r') as f:
-#    data_per_id = pickle.load(f)
-#%%
-#print data_per_id['AS14.01'].columns[-19:-1]
+import seaborn as sns
+print 'Neural network on based on', noPatients, 'patients'
+print 'Number of nodes:'
+print '   Input:..................', inputs
+print '   Hidden:.................', hidden
+print '   Output:.................', outputs
+print 'Total training instances:..', len(trndata) 
+print 'Total test instances:......', len(tstdata)
+print 'Mean absolute error:.......', np.mean(np.abs(errorVec))
+print 'Mean Squared error:........', MSE[0]
+print 'Standardization:...........', standardization
+sns.distplot(errorVec, bins=15)
+print errorVec

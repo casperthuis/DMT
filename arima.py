@@ -12,7 +12,9 @@ moods = []
 mMSE = 0
 totalPatients = 0
 for i in os.listdir('data'):
-    if i.endswith(".csv"): 
+    patients = ['01'] #,'09','12','25','28','30']
+    if i.endswith(".csv") and i.split('.')[1] in patients: 
+        
         with open('data/' + i) as f:
             next(f)
             for counter, line in enumerate(f):
